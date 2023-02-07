@@ -20,9 +20,18 @@ if [ -z "$fluentConfigFile" ]; then
 else
     echo "fluentConfigFile enviroment variable found, using '$fluentConfigFile'"
 fi
+
+if [ -z "$parsersConfigFile" ]; then
+    parsersConfigFile="parsers.conf"
+else
+    echo "parsersConfigFile environment variable found, using '$parsersConfigFile'"
+fi
 ###
 
 fluentConfig="
+[SERVICE]
+    Parsers_File /etc/parsers.conf
+
 [INPUT]
     Name              forward
     Listen            0.0.0.0
@@ -30,6 +39,11 @@ fluentConfig="
     Buffer_Chunk_Size 1M
     Buffer_Max_Size   6M
 
+"
+parsersConfig="
+[PARSER]
+    name   json
+    format json
 "
 
 # validate/install commands
@@ -202,6 +216,7 @@ if [ -n "$outputConfig" ]; then
     logDriver="fluentd"
     fluentConfig="${fluentConfig}${outputConfig}"
     echo "$fluentConfig" > "$fluentConfigFile"
+    echo "$parsersConfig" > "$parsersConfigFile"
 fi
 
 echo "Parsing input"
@@ -244,6 +259,7 @@ if [ "$logDriver" = "fluentd" ]; then
                     -p 24224:24224 \
                     --log-driver=local --log-opt max-size=500m \
                     -v "${PWD}/$fluentConfigFile:/etc/$fluentConfigFile" \
+		    -v "${PWD}/parsers.conf:/etc/parsers.conf" \
                     "$fluentBitImage" \
                     -c /etc/$fluentConfigFile 2>&1 \
                     ); then
